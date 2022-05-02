@@ -153,7 +153,7 @@ void man(Model* model, TGAImage& image, TGAColor color)
 	}
 }
 
-void rasterizer(Vec2i p0, Vec2i p1, TGAImage& image, TGAColor color, int ybuffer[])
+void rasterize(Vec2i p0, Vec2i p1, TGAImage& image, TGAColor color, int ybuffer[])
 {
 	if (p0.x > p1.x)
 	{
@@ -166,7 +166,11 @@ void rasterizer(Vec2i p0, Vec2i p1, TGAImage& image, TGAColor color, int ybuffer
 		if (ybuffer[x] < y)
 		{
 			ybuffer[x] = y;
-			image.set(x, 0, color);
+			for (int j = 0; j < 16; j++)
+			{
+				image.set(x, j, color);
+			}
+			
 		}
 	}
 }
@@ -188,11 +192,16 @@ int main(int argc, char** argv)
 	line(Vec2i(330, 463), Vec2i(594, 200), image, blue);
 
 	line(Vec2i(10, 10), Vec2i(790, 10), image, white);*/
+	//此数组以负无穷大进行初始化
 	int ybuffer[width];
 	for (int i = 0; i < width; i++)
 	{
+		//std::numeric_limits<T>::min()/max() 函数可用于获取由数字类型T表示的最小、最大有限值。
 		ybuffer[i] = std::numeric_limits<int>::min();
 	}
+	rasterize(Vec2i(20, 34), Vec2i(744, 400), image, red, ybuffer);
+	rasterize(Vec2i(120, 434), Vec2i(444, 400), image, green, ybuffer);
+	rasterize(Vec2i(330, 463), Vec2i(594, 200), image, blue, ybuffer);
 	image.flip_vertically();
 	image.write_tga_file("output.tga");
 	delete model;
