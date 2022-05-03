@@ -278,7 +278,7 @@ int TGAImage::get_width() {
 int TGAImage::get_height() {
 	return height;
 }
-
+//水平翻转函数
 bool TGAImage::flip_horizontally() {
 	if (!data) return false;
 	int half = width >> 1;
@@ -292,7 +292,7 @@ bool TGAImage::flip_horizontally() {
 	}
 	return true;
 }
-
+//垂直翻转函数
 bool TGAImage::flip_vertically() {
 	if (!data) return false;
 	unsigned long bytes_per_line = width * bytespp;

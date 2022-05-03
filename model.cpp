@@ -45,7 +45,7 @@ int Model::nverts() {
 int Model::nfaces() {
     return (int)faces_.size();
 }
-//根据idx获取三角形的三个顶点坐标
+//根据idx获取三角形的三个顶点坐标的idx
 std::vector<int> Model::face(int idx) {
     return faces_[idx];
 }
