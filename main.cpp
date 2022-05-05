@@ -89,8 +89,19 @@ Vec3f barycentric(Vec3f* pts, Vec3f P)
 	return Vec3f(-1, 1, 1); // in this case generate negative coordinates, it will be thrown away by the rasterizator
 
 }
+//计算uv坐标，进行适配处理
+Vec3f world2screen(Vec3f v)
+{
+	////将原本限制在2的范围内的顶点数据重新放大到一定宽高的屏幕上，加1是为了将负数的顶点变为正数，再进行放大处理
+	return Vec3f(int((v.x + 1.) * width / 2 + 0.5), int((v.y + 1.) * height / 2 + 0.5), v.z);
+}
 
-void triangle(Vec3f* pts, float* zbuffer, TGAImage& image, TGAColor color)
+Vec2i computeUV(float u, float v, TGAImage& texture)
+{
+	return Vec2i(int(u * texture.get_width()), int(v * texture.get_height()));
+}
+
+void triangle(Vec3f* pts,Vec3f* texture_coords ,float* zbuffer, TGAImage& image,TGAImage& texture,float intensity)
 {
 	//保证获取到最小盒子，所以初始化为最大
 	Vec2f bboxmin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
@@ -109,6 +120,7 @@ void triangle(Vec3f* pts, float* zbuffer, TGAImage& image, TGAColor color)
 
 	}
 	Vec3f P;
+	
 	for (P.x = bboxmin.x; P.x <= bboxmax.x; P.x++)
 	{
 		for (P.y = bboxmin.y; P.y <= bboxmax.y; P.y++)
@@ -116,11 +128,28 @@ void triangle(Vec3f* pts, float* zbuffer, TGAImage& image, TGAColor color)
 			Vec3f bc_screen = barycentric(pts, P);
 			if (bc_screen.x < 0 || bc_screen.y < 0 || bc_screen.z < 0) continue;
 			P.z = 0;
+			float u = 0.0f;
+			float v = 0.0f;
+			TGAColor color;
 			//对z值进行插值
 			P.z += pts[0].z * bc_screen.x;
 			P.z += pts[1].z * bc_screen.y;
 			P.z += pts[2].z * bc_screen.z;
 
+			//对uv进行插值
+			u += texture_coords[0].x * bc_screen.x;
+			u += texture_coords[1].x * bc_screen.y;
+			u += texture_coords[2].x * bc_screen.z;
+			v += texture_coords[0].y * bc_screen.x;
+			v += texture_coords[1].y * bc_screen.y;
+			v += texture_coords[2].y * bc_screen.z;
+
+			//计算uv在图片上的坐标。
+			Vec2i middle_color = computeUV(u, v, texture);
+			color = texture.get(middle_color.x,middle_color.y);
+			color.b = color.b * intensity;
+			color.g = color.g * intensity;
+			color.r = color.r * intensity;
 			if (zbuffer[int(P.x + P.y * width)] < P.z)
 			{
 				zbuffer[int(P.x + P.y * width)] = P.z;
@@ -129,11 +158,7 @@ void triangle(Vec3f* pts, float* zbuffer, TGAImage& image, TGAColor color)
 		}
 	}
 }
-Vec3f world2screen(Vec3f v)
-{
-	////将原本限制在2的范围内的顶点数据重新放大到一定宽高的屏幕上，加1是为了将负数的顶点变为正数，再进行放大处理
-	return Vec3f(int((v.x + 1.) * width / 2 + 0.5), int((v.y + 1.) * height / 2 + 0.5), v.z);
-}
+
 
 int main(int argc, char** argv)
 {
@@ -143,8 +168,13 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		model = new Model("F:\\GraphicsLearn\\Tiny_Software_Rasterizer\\obj\\african_head.obj");
+		model = new Model("F:\\GraphicsLearn\\Tiny_Software_Rasterizer\\obj\\african_head\\african_head.obj");
 	}
+	//纹理颜色
+	TGAImage texture;
+	int creat_texture=texture.read_tga_file("F:\\GraphicsLearn\\Tiny_Software_Rasterizer\\obj\\african_head\\african_head_diffuse.tga");
+	texture.flip_vertically();
+	TGAColor texture_color;
 	TGAImage image(width, height, TGAImage::RGB);
 	float* zbuffer = new float[width * height];
 	//std::numeric_limits<T>::min()/max() 函数可用于获取由数字类型T表示的最小、最大有限值。
@@ -159,10 +189,14 @@ int main(int argc, char** argv)
 		Vec3f pts[3];
 		//保存未转换的三角形顶点数据
 		Vec3f init_coords[3];
-		for (int j = 0; j < 3; j++) 
+		//保存相应顶点的颜色数据
+		Vec3f texture_coords[3];
+		for (int j = 0; j < 3; j++)
 		{
-			pts[j] = world2screen(model->vert(face[j]));
-			init_coords[j] = model->vert(face[j]);
+			//顶点数列为0，2，4，纹理数列为1，3，5；
+			pts[j] = world2screen(model->vert(face[j*2]));
+			texture_coords[j] =model->texture(face[int(j*2+1)]);
+			init_coords[j] = model->vert(face[j*2]);
 		}
 		//叉乘获得三角形法线方向
 		Vec3f n = (init_coords[2] - init_coords[0] ^ (init_coords[1] - init_coords[0]));
@@ -170,7 +204,7 @@ int main(int argc, char** argv)
 		float intensity = n * light_dir;
 		if (intensity > 0)
 		{
-			triangle(pts, zbuffer, image, TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
+			triangle(pts,texture_coords, zbuffer, image, texture,intensity);
 		}
 	}
 	image.flip_vertically();
