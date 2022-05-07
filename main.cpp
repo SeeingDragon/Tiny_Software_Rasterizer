@@ -10,9 +10,15 @@ const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red = TGAColor(255, 0, 0, 255);
 const TGAColor green = TGAColor(0, 255, 0, 255);
 const TGAColor blue = TGAColor(0, 0, 255, 255);
-Model* model;
+
 const int width = 800;
 const int height = 800;
+const int depth = 255;
+
+Model* model=NULL;
+float* zbuffer = NULL;
+//Vec3f light_dir(0, 0, -1);
+Vec3f light_dir = Vec3f(1, -1, 1).normalize();
 
 //绘制线段
 void line(Vec2i v0, Vec2i v1, TGAImage& image, TGAColor color) {
@@ -79,6 +85,25 @@ void rasterize(Vec2i p0, Vec2i p1, TGAImage& image, TGAColor color, int ybuffer[
 	}
 }
 
+//void lookat(Vec3f eye, Vec3f center, Vec3f up)
+//{
+//	Vec3f z = (eye - center).normalize();
+//	Vec3f x = up ^ z;
+//	Vec3f y = z ^ x;
+//	x.normalize();
+//	y.normalize();
+//	Matrix Minv = Matrix::identity();
+//	Matrix Tr = Matrix::identity();
+//	for (int i = 0; i < 3; i++)
+//	{
+//		Minv[0][i] = x[i];
+//		Minv[1][i] = y[i];
+//		Minv[2][i] = z[i];
+//		Tr[i][3] = -eye[i];
+//	}
+//	
+//}
+
 //计算给定三角形中点P的坐标
 Vec3f barycentric(Vec3f* pts, Vec3f P)
 {
@@ -101,8 +126,17 @@ Vec2i computeUV(float u, float v, TGAImage& texture)
 	return Vec2i(int(u * texture.get_width()), int(v * texture.get_height()));
 }
 
-void triangle(Vec3f* pts,Vec3f* texture_coords ,float* zbuffer, TGAImage& image,TGAImage& texture,float intensity)
-{
+void triangle(Vec3f* pts,Vec3f* texture_coords ,Vec3f* normal_coords,float* zbuffer, TGAImage& image,TGAImage& texture,float uv_intensity)
+{	 
+	float intensity[3];
+	for (int i = 0; i < 3; i++)
+		{
+			normal_coords[i].normalize();
+			intensity[i] = normal_coords[i] * light_dir;
+			if (intensity[i] < 0.f) intensity[i] = 0.f;
+	}
+	
+	float finalintensity=uv_intensity;
 	//保证获取到最小盒子，所以初始化为最大
 	Vec2f bboxmin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
 	Vec2f bboxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
@@ -128,32 +162,46 @@ void triangle(Vec3f* pts,Vec3f* texture_coords ,float* zbuffer, TGAImage& image,
 			Vec3f bc_screen = barycentric(pts, P);
 			if (bc_screen.x < 0 || bc_screen.y < 0 || bc_screen.z < 0) continue;
 			P.z = 0;
+			finalintensity = 0.0f;
 			float u = 0.0f;
 			float v = 0.0f;
 			TGAColor color;
-			//对z值进行插值
-			P.z += pts[0].z * bc_screen.x;
-			P.z += pts[1].z * bc_screen.y;
-			P.z += pts[2].z * bc_screen.z;
+			//对z值进行插值,bc_screen[0]=1-u-v,bc_screen[1]=u,bc_screen[2]=v,分别乘以三个点的z值进行插值
+			for (int i = 0; i < 3; i++)
+			{
+				P.z += pts[i].z * bc_screen[i];
+			}
 
 			//对uv进行插值
-			u += texture_coords[0].x * bc_screen.x;
-			u += texture_coords[1].x * bc_screen.y;
-			u += texture_coords[2].x * bc_screen.z;
-			v += texture_coords[0].y * bc_screen.x;
-			v += texture_coords[1].y * bc_screen.y;
-			v += texture_coords[2].y * bc_screen.z;
-
+			for (int i = 0; i < 3; i++)
+			{
+				u += texture_coords[i].x * bc_screen[i];
+				v += texture_coords[i].y * bc_screen[i];
+			}
 			//计算uv在图片上的坐标。
 			Vec2i middle_color = computeUV(u, v, texture);
 			color = texture.get(middle_color.x,middle_color.y);
-			color.b = color.b * intensity;
-			color.g = color.g * intensity;
-			color.r = color.r * intensity;
+			color.b = color.b * finalintensity;
+			color.g = color.g * finalintensity;
+			color.r = color.r * finalintensity;
+
+			//gouraud阴影计算
+			//三个顶点的阴影法线
+			//for (int i = 0; i < 3; i++) intensity_array[i] = gouraud_coords[i] * light_dir;
+			////进行插值
+			for (int i = 0; i < 3; i++)
+			{
+				finalintensity += intensity[i] * bc_screen[i];
+			}
+			/*color = white;
+			color.b = color.b * finalintensity;
+			color.g = color.g * finalintensity;
+			color.r = color.r * finalintensity;*/
+
 			if (zbuffer[int(P.x + P.y * width)] < P.z)
 			{
 				zbuffer[int(P.x + P.y * width)] = P.z;
-				image.set(P.x, P.y, color);
+				image.set(P.x, P.y, TGAColor(255 * finalintensity, 255 * finalintensity, 255 * finalintensity,255));
 			}
 		}
 	}
@@ -170,17 +218,16 @@ int main(int argc, char** argv)
 	{
 		model = new Model("F:\\GraphicsLearn\\Tiny_Software_Rasterizer\\obj\\african_head\\african_head.obj");
 	}
+	float intensity[3];
 	//纹理颜色
 	TGAImage texture;
 	int creat_texture=texture.read_tga_file("F:\\GraphicsLearn\\Tiny_Software_Rasterizer\\obj\\african_head\\african_head_diffuse.tga");
 	texture.flip_vertically();
 	TGAColor texture_color;
 	TGAImage image(width, height, TGAImage::RGB);
-	float* zbuffer = new float[width * height];
+	zbuffer = new float[width * height];
 	//std::numeric_limits<T>::min()/max() 函数可用于获取由数字类型T表示的最小、最大有限值。
 	for (int i = width * height; i--; zbuffer[i] = -std::numeric_limits<float>::max());
-	//定义光照
-	Vec3f light_dir(0, 0, -1);
 	//model->nfaces()返回三角形的数量
 	for (int i = 0; i < model->nfaces(); i++) {
 		//face是三角形面
@@ -191,21 +238,32 @@ int main(int argc, char** argv)
 		Vec3f init_coords[3];
 		//保存相应顶点的颜色数据
 		Vec3f texture_coords[3];
+		//保存gouraud阴影法线数据
+		Vec3f normal_coords[3];
 		for (int j = 0; j < 3; j++)
 		{
-			//顶点数列为0，2，4，纹理数列为1，3，5；
-			pts[j] = world2screen(model->vert(face[j*2]));
-			texture_coords[j] =model->texture(face[int(j*2+1)]);
-			init_coords[j] = model->vert(face[j*2]);
+			pts[j] = world2screen(model->vert(face[j*3]));
+			texture_coords[j] =model->texture(face[int(j*3+1)]);
+			init_coords[j] = model->vert(face[j*3]);
+			normal_coords[j] = model->Gour(face[j*3+2]);
+
 		}
 		//叉乘获得三角形法线方向
-		Vec3f n = (init_coords[2] - init_coords[0] ^ (init_coords[1] - init_coords[0]));
+		/*Vec3f n = (init_coords[2] - init_coords[0] ^ (init_coords[1] - init_coords[0]));
 		n.normalize();
 		float intensity = n * light_dir;
 		if (intensity > 0)
 		{
-			triangle(pts,texture_coords, zbuffer, image, texture,intensity);
-		}
+			triangle(pts,texture_coords, normal_coords, zbuffer, image, texture, light_dir, intensity);
+		}*/
+		/*for (int i = 0; i < 3; i++)
+		{
+			normal_coords[i].normalize();
+			intensity[i] = normal_coords[i] * light_dir;
+			if (intensity[i] < 0.f) intensity[i] = 0.f;
+		}*/
+		//void triangle(Vec3f * pts, Vec3f * texture_coords, Vec3f * gouraud_coords, float* zbuffer, TGAImage & image, TGAImage & texture, float* intensity, float uv_intensity)
+		triangle(pts, texture_coords, normal_coords,zbuffer, image, texture,0.f);
 	}
 	image.flip_vertically();
 	image.write_tga_file("output.tga");
