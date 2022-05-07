@@ -5,6 +5,7 @@
 #include <vector>
 #include "model.h"
 
+
 Model::Model(const char* filename) : verts_(), faces_() {
     //ifstream读取文件
     std::ifstream in;
@@ -25,35 +26,46 @@ Model::Model(const char* filename) : verts_(), faces_() {
             iss >> trash;
             Vec3f v;
             //存储一个顶点的x，y，z数据
-            for (int i = 0; i < 3; i++) iss >> v.raw[i];
+            for (int i = 0; i < 3; i++) iss >> v[i];
             verts_.push_back(v);
+        }
+        //扫描到Gouraud阴影向量
+        if (!line.compare(0, 3, "vn ")) {
+            //因为有"vt"两个字符，所以需要两次
+            iss >> trash >> trash;
+            Vec3f n;
+            for (int i = 0; i < 3; i++) iss >> n[i];
+            norms_.push_back(n.normalize());
         }
         //存储纹理颜色
         if (!line.compare(0, 3, "vt ")) {
             //因为有"vt"两个字符，所以需要两次
-            iss >> trash;
-            iss >> trash;
-            Vec3f tex;
-            for (int i = 0; i < 3; i++) iss >> tex.raw[i];
-            textures_.push_back(tex);
+            iss >> trash >> trash;
+            Vec3f uv;
+            for (int i = 0; i < 3; i++) iss >> uv[i];
+            tex_coord.push_back(uv);
         }
+        
         //扫描到三角形面行
         else if (!line.compare(0, 2, "f ")) {
             std::vector<int> f;
-            int  idx, itrash, lastrash;
+            int  idx, itrash, vntrash;
             iss >> trash;
             //取face行中的单词中第一个数字
-            while (iss >> idx >> trash >> itrash >> trash >> lastrash) {
+            while (iss >> idx >> trash >> itrash >> trash >> vntrash) {
                 idx--; // in wavefront obj all indices start at 1, not zero
                 f.push_back(idx);
                 //载入纹理颜色
                 itrash--;
                 f.push_back(itrash);
+                vntrash--;
+                f.push_back(vntrash);
             }
             faces_.push_back(f);
+            
         }
     }
-    std::cerr << "# v# " << verts_.size() << " f# " << faces_.size() << std::endl;
+    std::cerr << "# v# " << verts_.size() <<"vt# "<< uv_.size() <<"vn# "<< norms_.size() << " f# " << faces_.size() << std::endl;
 }
 
 Model::~Model() {
@@ -77,6 +89,20 @@ Vec3f Model::vert(int i) {
 //获取纹理
 Vec3f Model::texture(int i)
 {
-    return textures_[i] ;
+    return tex_coord[i] ;
 }
+
+Vec3f Model::Gour(int i)
+{
+    return norms_[i];
+}
+
+void Model::load_texture(std::string filename, const char* suffix, TGAImage& img)
+{
+    size_t dot = filename.find_last_of(".");
+    if (dot == std::string::npos) return;
+    std::string texfile = filename.substr(0, dot) + suffix;
+    std::cerr << "texture file" << texfile << "loading" << (img.read_tga_file(texfile.c_str()) ? "ok" : "failed") << std::endl;
+}
+
 
