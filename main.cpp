@@ -85,25 +85,6 @@ void rasterize(Vec2i p0, Vec2i p1, TGAImage& image, TGAColor color, int ybuffer[
 	}
 }
 
-//void lookat(Vec3f eye, Vec3f center, Vec3f up)
-//{
-//	Vec3f z = (eye - center).normalize();
-//	Vec3f x = up ^ z;
-//	Vec3f y = z ^ x;
-//	x.normalize();
-//	y.normalize();
-//	Matrix Minv = Matrix::identity();
-//	Matrix Tr = Matrix::identity();
-//	for (int i = 0; i < 3; i++)
-//	{
-//		Minv[0][i] = x[i];
-//		Minv[1][i] = y[i];
-//		Minv[2][i] = z[i];
-//		Tr[i][3] = -eye[i];
-//	}
-//	
-//}
-
 //计算给定三角形中点P的坐标
 Vec3f barycentric(Vec3f* pts, Vec3f P)
 {
@@ -180,24 +161,18 @@ void triangle(Vec3f* pts,Vec3f* texture_coords ,Vec3f* normal_coords,float* zbuf
 			}
 			//计算uv在图片上的坐标。
 			Vec2i middle_color = computeUV(u, v, texture);
+			//得到纹理颜色
 			color = texture.get(middle_color.x,middle_color.y);
 			color.b = color.b * finalintensity;
 			color.g = color.g * finalintensity;
 			color.r = color.r * finalintensity;
 
 			//gouraud阴影计算
-			//三个顶点的阴影法线
-			//for (int i = 0; i < 3; i++) intensity_array[i] = gouraud_coords[i] * light_dir;
-			////进行插值
+			//进行插值
 			for (int i = 0; i < 3; i++)
 			{
 				finalintensity += intensity[i] * bc_screen[i];
 			}
-			/*color = white;
-			color.b = color.b * finalintensity;
-			color.g = color.g * finalintensity;
-			color.r = color.r * finalintensity;*/
-
 			if (zbuffer[int(P.x + P.y * width)] < P.z)
 			{
 				zbuffer[int(P.x + P.y * width)] = P.z;
@@ -249,20 +224,15 @@ int main(int argc, char** argv)
 
 		}
 		//叉乘获得三角形法线方向
-		/*Vec3f n = (init_coords[2] - init_coords[0] ^ (init_coords[1] - init_coords[0]));
+		Vec3f n = (init_coords[2] - init_coords[0] ^ (init_coords[1] - init_coords[0]));
 		n.normalize();
 		float intensity = n * light_dir;
 		if (intensity > 0)
 		{
-			triangle(pts,texture_coords, normal_coords, zbuffer, image, texture, light_dir, intensity);
-		}*/
-		/*for (int i = 0; i < 3; i++)
-		{
-			normal_coords[i].normalize();
-			intensity[i] = normal_coords[i] * light_dir;
-			if (intensity[i] < 0.f) intensity[i] = 0.f;
-		}*/
-		//void triangle(Vec3f * pts, Vec3f * texture_coords, Vec3f * gouraud_coords, float* zbuffer, TGAImage & image, TGAImage & texture, float* intensity, float uv_intensity)
+			//根据uv计算纹理颜色
+			//triangle(pts,texture_coords, normal_coords, zbuffer, image, texture,intensity);
+		}
+		//计算Gouraud阴影
 		triangle(pts, texture_coords, normal_coords,zbuffer, image, texture,0.f);
 	}
 	image.flip_vertically();
