@@ -5,6 +5,7 @@
 #include "tgaimage.h"
 #include "model.h"
 #include "geometry.h"
+#include "our_gl.h"
 
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red = TGAColor(255, 0, 0, 255);
@@ -17,8 +18,23 @@ const int depth = 255;
 
 Model* model=NULL;
 float* zbuffer = NULL;
+//计算纹理需要的光照
 //Vec3f light_dir(0, 0, -1);
 Vec3f light_dir = Vec3f(1, -1, 1).normalize();
+//Vec3f light_dir(1, -1, 1);
+Vec3f eye(1, 1, 3);
+Vec3f center(0, 0, 0);
+Vec3f up(0, 1, 0);
+
+struct GouraudShader:public IShader
+{
+	//顶点着色器写入，片段着色器读取。
+	Vec3f varying_intensity;
+	virtual Vec4f vertex(int iface, int nthvert)
+	{
+
+	}
+};
 
 //绘制线段
 void line(Vec2i v0, Vec2i v1, TGAImage& image, TGAColor color) {
@@ -88,7 +104,7 @@ void rasterize(Vec2i p0, Vec2i p1, TGAImage& image, TGAColor color, int ybuffer[
 //计算给定三角形中点P的坐标
 Vec3f barycentric(Vec3f* pts, Vec3f P)
 {
-	Vec3f u = Vec3f(pts[2].x - pts[0].x, pts[1].x - pts[0].x, pts[0].x - P.x) ^ Vec3f(pts[2].y - pts[0].y, pts[1].y - pts[0].y, pts[0].y - P.y);
+	Vec3f u = cross(Vec3f(pts[2].x - pts[0].x, pts[1].x - pts[0].x, pts[0].x - P.x),Vec3f(pts[2].y - pts[0].y, pts[1].y - pts[0].y, pts[0].y - P.y));
 	//防止后面除以u.z值时，u.z作为分母却为0；
 	if (std::abs(u.z) > 1e-2) // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
 		return Vec3f(1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
@@ -107,7 +123,7 @@ Vec2i computeUV(float u, float v, TGAImage& texture)
 	return Vec2i(int(u * texture.get_width()), int(v * texture.get_height()));
 }
 
-void triangle(Vec3f* pts,Vec3f* texture_coords ,Vec3f* normal_coords,float* zbuffer, TGAImage& image,TGAImage& texture,float uv_intensity)
+void triangle(Vec3f* pts,Vec2f* texture_coords ,Vec3f* normal_coords,float* zbuffer, TGAImage& image,TGAImage& texture,float uv_intensity)
 {	 
 	float intensity[3];
 	for (int i = 0; i < 3; i++)
@@ -143,6 +159,7 @@ void triangle(Vec3f* pts,Vec3f* texture_coords ,Vec3f* normal_coords,float* zbuf
 			Vec3f bc_screen = barycentric(pts, P);
 			if (bc_screen.x < 0 || bc_screen.y < 0 || bc_screen.z < 0) continue;
 			P.z = 0;
+			//计算纹理时需要把finalintensity = 0.0f;注释掉
 			finalintensity = 0.0f;
 			float u = 0.0f;
 			float v = 0.0f;
@@ -163,9 +180,9 @@ void triangle(Vec3f* pts,Vec3f* texture_coords ,Vec3f* normal_coords,float* zbuf
 			Vec2i middle_color = computeUV(u, v, texture);
 			//得到纹理颜色
 			color = texture.get(middle_color.x,middle_color.y);
-			color.b = color.b * finalintensity;
-			color.g = color.g * finalintensity;
-			color.r = color.r * finalintensity;
+			color.b = color.b * uv_intensity;
+			color.g = color.g * uv_intensity;
+			color.r = color.r * uv_intensity;
 
 			//gouraud阴影计算
 			//进行插值
@@ -176,7 +193,10 @@ void triangle(Vec3f* pts,Vec3f* texture_coords ,Vec3f* normal_coords,float* zbuf
 			if (zbuffer[int(P.x + P.y * width)] < P.z)
 			{
 				zbuffer[int(P.x + P.y * width)] = P.z;
-				image.set(P.x, P.y, TGAColor(255 * finalintensity, 255 * finalintensity, 255 * finalintensity,255));
+				//计算纹理换成color
+				//TGAColor(255 * finalintensity, 255 * finalintensity, 255 * finalintensity,255)
+				//color
+				image.set(P.x, P.y, TGAColor(255 * finalintensity, 255 * finalintensity, 255 * finalintensity, 255));
 			}
 		}
 	}
@@ -212,19 +232,19 @@ int main(int argc, char** argv)
 		//保存未转换的三角形顶点数据
 		Vec3f init_coords[3];
 		//保存相应顶点的颜色数据
-		Vec3f texture_coords[3];
+		Vec2f texture_coords[3];
 		//保存gouraud阴影法线数据
 		Vec3f normal_coords[3];
 		for (int j = 0; j < 3; j++)
 		{
-			pts[j] = world2screen(model->vert(face[j*3]));
-			texture_coords[j] =model->texture(face[int(j*3+1)]);
-			init_coords[j] = model->vert(face[j*3]);
-			normal_coords[j] = model->Gour(face[j*3+2]);
+			pts[j] = world2screen(model->vert(face[j]));
+			texture_coords[j] = model->uv(i,j);
+			init_coords[j] = model->vert(face[j]);
+			normal_coords[j] = model->normal(i,j);
 
 		}
 		//叉乘获得三角形法线方向
-		Vec3f n = (init_coords[2] - init_coords[0] ^ (init_coords[1] - init_coords[0]));
+		Vec3f n = cross(init_coords[2] - init_coords[0],init_coords[1] - init_coords[0]);
 		n.normalize();
 		float intensity = n * light_dir;
 		if (intensity > 0)
