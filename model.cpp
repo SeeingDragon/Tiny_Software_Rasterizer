@@ -29,6 +29,14 @@ Model::Model(const char* filename) : verts_(), faces_() {
             for (int i = 0; i < 3; i++) iss >> v[i];
             verts_.push_back(v);
         }
+        //存储纹理颜色
+        if (!line.compare(0, 3, "vt ")) {
+            //因为有"vt"两个字符，所以需要两次
+            iss >> trash >> trash;
+            Vec2f uv;
+            for (int i = 0; i < 2; i++) iss >> uv[i];
+            uv_.push_back(uv);
+        }
         //扫描到Gouraud阴影向量
         if (!line.compare(0, 3, "vn ")) {
             //因为有"vt"两个字符，所以需要两次
@@ -37,32 +45,17 @@ Model::Model(const char* filename) : verts_(), faces_() {
             for (int i = 0; i < 3; i++) iss >> n[i];
             norms_.push_back(n.normalize());
         }
-        //存储纹理颜色
-        if (!line.compare(0, 3, "vt ")) {
-            //因为有"vt"两个字符，所以需要两次
-            iss >> trash >> trash;
-            Vec3f uv;
-            for (int i = 0; i < 3; i++) iss >> uv[i];
-            tex_coord.push_back(uv);
-        }
-        
         //扫描到三角形面行
         else if (!line.compare(0, 2, "f ")) {
-            std::vector<int> f;
-            int  idx, itrash, vntrash;
+            std::vector<Vec3i> f;
+            Vec3i tmp;
             iss >> trash;
             //取face行中的单词中第一个数字
-            while (iss >> idx >> trash >> itrash >> trash >> vntrash) {
-                idx--; // in wavefront obj all indices start at 1, not zero
-                f.push_back(idx);
-                //载入纹理颜色
-                itrash--;
-                f.push_back(itrash);
-                vntrash--;
-                f.push_back(vntrash);
+            while (iss >> tmp[0] >> trash >> tmp[1] >> trash >> tmp[2]) {
+                for (int i = 0; i < 3; i++) tmp[i]--;
+                f.push_back(tmp);
             }
             faces_.push_back(f);
-            
         }
     }
     std::cerr << "# v# " << verts_.size() <<"vt# "<< uv_.size() <<"vn# "<< norms_.size() << " f# " << faces_.size() << std::endl;
@@ -78,31 +71,50 @@ int Model::nverts() {
 int Model::nfaces() {
     return (int)faces_.size();
 }
-//根据idx获取三角形的三个顶点坐标的idx
+//返回整个三角形面，得到三角形的三个点
 std::vector<int> Model::face(int idx) {
-    return faces_[idx];
+    std::vector<int> face;
+    for (int i = 0; i < (int)faces_[idx].size(); i++) face.push_back(faces_[idx][i][0]);
+    return face;
 }
 //获取顶点
 Vec3f Model::vert(int i) {
     return verts_[i];
 }
-//获取纹理
-Vec3f Model::texture(int i)
-{
-    return tex_coord[i] ;
-}
 
-Vec3f Model::Gour(int i)
+Vec3f Model::vert(int iface, int nthvert)
 {
-    return norms_[i];
+    return verts_[faces_[iface][nthvert][0]];
 }
 
 void Model::load_texture(std::string filename, const char* suffix, TGAImage& img)
 {
+    //定义纹理图片文件名
+    std::string texfile(filename);
+    //find_last_of函数寻找等于给定字符序列中字符之一的最后字符，找到最后一个".",没有找到返回string::nops;
     size_t dot = filename.find_last_of(".");
-    if (dot == std::string::npos) return;
+    if (dot != std::string::npos)
+    {
+        texfile = texfile.substr(0, dot) + std::string(suffix);
+        std::cerr << "texture file" << texfile << " loading" << (img.read_tga_file(texfile.c_str()) ? "ok" : "failed") << std::endl;
+        img.flip_vertically();
+    }
     std::string texfile = filename.substr(0, dot) + suffix;
     std::cerr << "texture file" << texfile << "loading" << (img.read_tga_file(texfile.c_str()) ? "ok" : "failed") << std::endl;
 }
+
+
+//获取纹理
+Vec2f Model::uv(int iface,int nthvert)
+{
+    return uv_[faces_[iface][nthvert][1]] ;
+}
+
+Vec3f Model::normal(int iface,int nthvert)
+{
+    int idx = faces_[iface][nthvert][2];
+    return norms_[idx].normalize();
+}
+
 
 

@@ -10,12 +10,11 @@ private:
 	//存储顶点数据
 	std::vector<Vec3f> verts_;
 	//存储纹理坐标
-	std::vector<Vec3f> uv_;
-	std::vector<Vec3f> tex_coord;
+	std::vector<Vec2f> uv_;
 	//存储Gouraud阴影向量
 	std::vector<Vec3f> norms_;
 	//存储三角形面
-	std::vector<std::vector<int> > faces_;
+	std::vector<std::vector<Vec3i> > faces_;
 
 	void load_texture(std::string filename, const char* suffix, TGAImage& img);
 public:
@@ -24,10 +23,9 @@ public:
 	int nverts();
 	int nfaces();
 	Vec3f vert(int i);
-	Vec3f texture(int i);
-	Vec3f Gour(int i);
-	Vec2i uv(int iface, int nvert);
-	TGAColor diffuse(Vec2i uv);
+	Vec3f vert(int iface, int nthvert);
+	Vec2f uv(int iface, int nthvert);
+	Vec3f normal(int iface, int nthvert);
 	std::vector<int> face(int idx);
 };
 
