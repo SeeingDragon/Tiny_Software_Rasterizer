@@ -59,6 +59,8 @@ Model::Model(const char* filename) : verts_(), faces_() {
         }
     }
     std::cerr << "# v# " << verts_.size() <<"vt# "<< uv_.size() <<"vn# "<< norms_.size() << " f# " << faces_.size() << std::endl;
+    load_texture(filename, "_diffuse.tga", diffusemap_);
+    diffusemap_.flip_vertically();
 }
 
 Model::~Model() {
@@ -87,11 +89,11 @@ Vec3f Model::vert(int iface, int nthvert)
     return verts_[faces_[iface][nthvert][0]];
 }
 
-void Model::load_texture(std::string filename, const char* suffix, TGAImage& img)
+void Model::load_texture(std::string filename, const char* suffix, TGAImage &img)
 {
     //定义纹理图片文件名
     std::string texfile(filename);
-    //find_last_of函数寻找等于给定字符序列中字符之一的最后字符，找到最后一个".",没有找到返回string::nops;
+    //find_last_of函数寻找等于给定字符序列中字符之一的最后字符，找到最后一个".",没有找到返回string::nops;img.read_tga_file(texfile.c_str()
     size_t dot = filename.find_last_of(".");
     if (dot != std::string::npos)
     {
@@ -99,7 +101,7 @@ void Model::load_texture(std::string filename, const char* suffix, TGAImage& img
         std::cerr << "texture file" << texfile << " loading" << (img.read_tga_file(texfile.c_str()) ? "ok" : "failed") << std::endl;
         img.flip_vertically();
     }
-    std::string texfile = filename.substr(0, dot) + suffix;
+    texfile = filename.substr(0, dot) + suffix;
     std::cerr << "texture file" << texfile << "loading" << (img.read_tga_file(texfile.c_str()) ? "ok" : "failed") << std::endl;
 }
 
@@ -116,5 +118,10 @@ Vec3f Model::normal(int iface,int nthvert)
     return norms_[idx].normalize();
 }
 
+TGAColor Model::diffuse(Vec2f uvf)
+{
+    Vec2i uv(int(uvf[0] * diffusemap_.get_width()), int(uvf[1] * diffusemap_.get_height()));
+    return diffusemap_.get(uv.x, uv.y);
+}
 
 
