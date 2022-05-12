@@ -16,6 +16,8 @@ private:
 	//存储三角形面
 	std::vector<std::vector<Vec3i> > faces_;
 
+	//漫反射颜色贴图
+	TGAImage diffusemap_;
 	void load_texture(std::string filename, const char* suffix, TGAImage& img);
 public:
 	Model(const char* filename);
@@ -26,6 +28,7 @@ public:
 	Vec3f vert(int iface, int nthvert);
 	Vec2f uv(int iface, int nthvert);
 	Vec3f normal(int iface, int nthvert);
+	TGAColor diffuse(Vec2f uvf);
 	std::vector<int> face(int idx);
 };
 
