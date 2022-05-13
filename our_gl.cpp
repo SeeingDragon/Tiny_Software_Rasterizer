@@ -45,18 +45,6 @@ void lookat(Vec3f eye, Vec3f center, Vec3f up)
 	}
 }
 
-
-////计算给定三角形中点P的坐标
-//Vec3f barycentric(Vec3f* pts, Vec3f P)
-//{
-//	Vec3f u = cross(Vec3f(pts[2].x - pts[0].x, pts[1].x - pts[0].x, pts[0].x - P.x),Vec3f(pts[2].y - pts[0].y, pts[1].y - pts[0].y, pts[0].y - P.y));
-//	//防止后面除以u.z值时，u.z作为分母却为0；
-//	if (std::abs(u.z) > 1e-2) // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
-//		return Vec3f(1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
-//	return Vec3f(-1, 1, 1); // in this case generate negative coordinates, it will be thrown away by the rasterizator
-//
-//}
-
 Vec3f barycentric(Vec2f A, Vec2f B, Vec2f C, Vec2f P)
 {
 	Vec3f s[2];
@@ -100,11 +88,11 @@ void triangle(Vec4f* pts, IShader& shader, TGAImage& image, TGAImage& zbuffer)
 			float z = pts[0][2] * c.x + pts[1][2] * c.y + pts[2][2] * c.z;
 			//对齐次方程引入的w进行插值
 			float w = pts[0][3] * c.x + pts[1][3] * c.y + pts[2][3] * c.z;
-			//获取深度插值并将其限制在0-255
+			//获取深度插值并将其限制在0-255,加0.5应该是为了确定在像素中心
 			int frag_depth = std::max(0, std::min(255, int(z / w + 0.5)));
-		
+			//zbuffer.get(P.x, P.y)[0] 大于 frag_depth则意味着当前zbuffer离摄像机更近，因此跳出循环
 			if (c.x < 0 || c.y < 0 || c.z<0 || zbuffer.get(P.x, P.y)[0]>frag_depth) continue;
-			//
+			//获取颜色
 			bool discard = shader.fragment(c, color);
 			if (!discard)
 			{

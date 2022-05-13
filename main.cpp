@@ -22,13 +22,16 @@ struct GouraudShader :public IShader
 	//顶点着色器写入，片段着色器读取。
 	Vec3f varying_intensity;
 	mat<2, 3, float> varying_uv;
-	//返回顶点并且写入varying_intensity的xyz
+	mat<4, 4, float> uniform_M;
+	mat<4, 4, float> uniform_MIT;
+	//表示1：//对顶点坐标体系进行变换，以及获取到三个顶点的uv和光照强度（光照强度等于法线乘以光照向量）
+
+	//表示2：光照强度不再使用三个顶点的光照强度值进行插值
 	virtual Vec4f vertex(int iface, int nthvert)
 	{
-		
+		//表示1：
 		//根据法线向量计算光照强度
-		Vec3f gouraud = model->normal(iface, nthvert);
-		varying_intensity[nthvert] = std::max(0.f, model->normal(iface, nthvert) * light_dir);
+		//varying_intensity[nthvert] = std::max(0.f, model->normal(iface, nthvert) * light_dir);
 		//计算uv,按列填入数字，每一列都是一个顶点的uv
 		varying_uv.set_col(nthvert, model->uv(iface, nthvert));
 		//对顶点引入齐次方程
@@ -38,12 +41,26 @@ struct GouraudShader :public IShader
 		return gl_Vertex;
 	}
 
-	
+	//表示1：根据顶点获取到的光照强度和uv进行插值，然后通过uv坐标获取图片的颜色，最后乘以光照强度就是最后的颜色
+
+	//如果我们有一个模型，其法向量由艺术家给出，并且该模型用仿射映射进行变换，则法向量将使用映射进行变换，等于原始映射矩阵的反矩阵的转置
 	virtual bool fragment(Vec3f bar, TGAColor &color)
 	{
-		float intensity = varying_intensity * bar;
+		//表示1：
+		//float intensity = varying_intensity * bar;
 		Vec2f uv = varying_uv * bar;
+		//法向量的变换
+		Vec3f n=proj<3>(uniform_MIT*embed<4>(model->normal(uv))).normalize();
+		//光照向量坐标体系变换
+		Vec3f L = proj<3>(uniform_M * embed<4>(light_dir)).normalize();
+		//如果 n 和 l 被归一化，则 r = 2n<n，l> - l
+		Vec3f r = (n * (n * L * 2.f) - L).normalize();
+		float diffuse = std::max(0.f, n * L);
+		//pow函数返回x的y次方
+		float specular = pow(std::max(r.z, 0.f), model->specular(uv));
+		//选择读取哪个纹理图片
 		color = model->diffuse(uv);
+		for (int i = 0; i < 3; i++) color[i] = std::min<float>(5 + color[i] * (diffuse + 0.6 * specular), 255);
 		return false;
 	}
 };
@@ -68,7 +85,8 @@ int main(int argc, char** argv)
 	TGAImage zbuffer(width, height, TGAImage::GRAYSCALE);
 
 	GouraudShader shader;
-	
+	shader.uniform_M = Projection * ModelView;
+	shader.uniform_MIT=(Projection*ModelView).invert_transpose();
 	//model->nfaces()返回三角形的数量
 	for (int i = 0; i < model->nfaces(); i++) {
 		//保存三个顶点
