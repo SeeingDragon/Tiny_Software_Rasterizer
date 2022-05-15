@@ -60,13 +60,11 @@ Model::Model(const char* filename) : verts_(), faces_() {
     }
     std::cerr << "# v# " << verts_.size() <<"vt# "<< uv_.size() <<"vn# "<< norms_.size() << " f# " << faces_.size() << std::endl;
     load_texture(filename, "_diffuse.tga", diffusemap_);
-    load_texture(filename, "_nm.tga", normalmap_);
-    load_texture(filename, "_nm_tangent.tga", normalmap_tangent__);
+    load_texture(filename, "_nm_tangent.tga", normalmap_);
     load_texture(filename, "_spec.tga", specualrmap_);
     //进行垂直翻转，不然坐标是反的；
     diffusemap_.flip_vertically();
     normalmap_.flip_vertically();
-    normalmap_tangent__.flip_vertically();
     specualrmap_.flip_vertically();
 }
 
@@ -140,15 +138,9 @@ Vec3f Model::normal(Vec2f uvf)
     Vec3f res;
     for (int i = 0; i < 3; i++)
     {
-        res[2 - i] = (float)c[i] / 255.f * 2.f - 1.f;
+        res[2-i] = (float)c[i] / 255.f * 2.f - 1.f;
     }
     return res;
-}
-
-TGAColor Model::normal_tangent(Vec2f uvf)
-{
-    Vec2i uv(int(uvf[0] * normalmap_tangent__.get_width()), int(uvf[1] * normalmap_tangent__.get_height()));
-    return normalmap_tangent__.get(uv.x, uv.y);
 }
 
 float Model::specular(Vec2f uvf)

@@ -20,8 +20,6 @@ private:
 	TGAImage diffusemap_;
 	//法线向量贴图
 	TGAImage normalmap_;
-	//达布坐标系法线向量贴图
-	TGAImage normalmap_tangent__;
 	//高光贴图
 	TGAImage specualrmap_;
 	void load_texture(std::string filename, const char* suffix, TGAImage& img);
@@ -36,7 +34,6 @@ public:
 	Vec3f normal(int iface, int nthvert);
 	TGAColor diffuse(Vec2f uvf);
 	Vec3f normal(Vec2f uvf);
-	TGAColor normal_tangent(Vec2f uvf);
 	float specular(Vec2f uvf);
 	std::vector<int> face(int idx);
 };

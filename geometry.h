@@ -127,6 +127,7 @@ public:
         return rows[idx];
     }
 
+    //È¡¾ØÕóµÚidxÁĞ
     vec<DimRows, T> col(const size_t idx) const {
         assert(idx < DimCols);
         vec<DimRows, T> ret;
@@ -168,10 +169,22 @@ public:
         return ret;
     }
 
+    //Äæ¾ØÕóÈ»ºó×ªÖÃ
     mat<DimRows, DimCols, T> invert_transpose() {
+        
         mat<DimRows, DimCols, T> ret = adjugate();
         T tmp = ret[0] * rows[0];
         return ret / tmp;
+    }
+    //Äæ¾ØÕó
+    mat<DimRows, DimCols, T> invert() {
+        return invert_transpose().transpose();
+    }
+    //×ªÖÃ¾ØÕó
+    mat<DimCols, DimRows, T> transpose() {
+        mat<DimCols, DimRows, T> ret;
+        for (size_t i = DimCols; i--; ret[i] = this->col(i));
+        return ret;
     }
 };
 
