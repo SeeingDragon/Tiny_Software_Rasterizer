@@ -204,6 +204,28 @@ struct Shader :public IShader
 	}
 };
 
+struct DpethShader : public IShader
+{
+	mat<3, 3, float> varying_tri;
+
+	DpethShader() :varying_tri() {};
+
+	virtual Vec4f vertex(int iface, int nthvert)
+	{
+		Vec4f gl_vertex = embed<4>(model->vert(iface, nthvert));
+		gl_vertex = Viewport * Projection * ModelView * gl_vertex;
+		varying_tri.set_col(nthvert, proj<3>(gl_vertex / gl_vertex[3]));
+		return gl_vertex;
+	}
+
+	virtual bool fragment(Vec3f bar, TGAColor& color)
+	{
+		Vec3f P = varying_tri * bar;
+		color = TGAColor(255, 255, 255) * (P.z / depth);
+		return false;
+	}
+};
+
 int main(int argc, char** argv)
 {
 	if (2 == argc)
@@ -220,6 +242,9 @@ int main(int argc, char** argv)
 	//norm函数return std::sqrt(x * x + y * y + z * z)
 	projection(-1.f / (eye - center).norm());
 	TGAImage image(width, height, TGAImage::RGB);
+
+	float* depthbuffer = new float[width * height];
+	for (int i = 0; i < width * height; i++) depthbuffer[i] = -std::numeric_limits<float>::max();
 	TGAImage zbuffer(width, height, TGAImage::GRAYSCALE);
 
 	//gouraud阴影着色
@@ -232,7 +257,8 @@ int main(int argc, char** argv)
 	shader.uniform_MIT=(Projection*ModelView).invert_transpose();*/
 
 	light_dir = proj<3>((Projection * ModelView) * embed<4>(light_dir)).normalize();
-
+	int min =2000;
+	int max =0;
 	Shader shader;
 	//model->nfaces()返回三角形的数量
 	for (int i = 0; i < model->nfaces(); i++) {
@@ -242,9 +268,11 @@ int main(int argc, char** argv)
 		{
 			screen_coords[j] = shader.vertex(i, j);
 		}
-		triangle(screen_coords, shader, image, zbuffer);
-	}
+		triangle(screen_coords, shader, image, zbuffer,depthbuffer,min,max);
 	
+	}
+	std::cout << "min= " << min << std::endl;
+	std::cout << "max= " << max <<std::endl;
 	image.flip_vertically();
 	zbuffer.flip_vertically();
 	image.write_tga_file("output.tga");
