@@ -16,10 +16,10 @@ void viewport(int x, int y, int w, int h)
 	Viewport = Matrix::identity();
 	Viewport[0][3] = x + w / 2.f;
 	Viewport[1][3] = y + h / 2.f;
-	Viewport[2][3] = 255.f / 2.f;
+	Viewport[2][3] = depth / 2.f;
 	Viewport[0][0] = w / 2.f;
 	Viewport[1][1] = h / 2.f;
-	Viewport[2][2] = 255.f / 2.f;
+	Viewport[2][2] = depth / 2.f;
 }
 
 //投影矩阵
@@ -63,7 +63,7 @@ Vec3f barycentric(Vec2f A, Vec2f B, Vec2f C, Vec2f P)
 
 
 
-void triangle(Vec4f* pts, IShader& shader, TGAImage& image, TGAImage& zbuffer)
+void triangle(Vec4f* pts, IShader& shader, TGAImage& image,TGAImage& zbuffer, float *depthbuffer,int &min,int &max)
 {
 	Vec2f bboxmin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
 	Vec2f bboxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
@@ -89,14 +89,24 @@ void triangle(Vec4f* pts, IShader& shader, TGAImage& image, TGAImage& zbuffer)
 			//对齐次方程引入的w进行插值
 			float w = pts[0][3] * c.x + pts[1][3] * c.y + pts[2][3] * c.z;
 			//获取深度插值并将其限制在0-255,加0.5应该是为了确定在像素中心
-			int frag_depth = std::max(0, std::min(255, int(z / w + 0.5)));
+			//int frag_depth = std::max(0, std::min(255, int(z / w + 0.5)));
+			//放开深度限制
+			int frag_depth = z / w;
 			//zbuffer.get(P.x, P.y)[0] 大于 frag_depth则意味着当前zbuffer离摄像机更近，因此跳出循环
-			if (c.x < 0 || c.y < 0 || c.z<0 || zbuffer.get(P.x, P.y)[0]>frag_depth) continue;
+			//zbuffer[P.x+P.y*image.get_width()]>frag_depth
+			//zbuffer.get(P.x, P.y)[0]>frag_depth
+			if (c.x < 0 || c.y < 0 || c.z<0 || depthbuffer[int(P.x+P.y*image.get_width())]>frag_depth) continue;
 			//获取颜色
 			bool discard = shader.fragment(c, color);
 			if (!discard)
 			{
-				zbuffer.set(P.x, P.y, TGAColor(frag_depth));
+				//计算frag_depth范围，从而进行缩放
+				if (frag_depth > max) max = frag_depth;
+				if (frag_depth < min) min = frag_depth;
+				//min=431，max=1871，系数为255/(1871-431)=0.1777;
+				int zbuffer_value = std::max(0, std::min(255, int((frag_depth - 432) * 255/(1871-431))));
+				zbuffer.set(P.x, P.y, TGAColor(zbuffer_value));
+				depthbuffer[int(P.x + P.y * image.get_width())] = frag_depth;
 				image.set(P.x, P.y, color);
 			}
 		}
