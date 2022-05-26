@@ -63,7 +63,7 @@ Vec3f barycentric(Vec2f A, Vec2f B, Vec2f C, Vec2f P)
 
 
 
-void triangle(Vec4f* pts, IShader& shader, TGAImage& image,TGAImage& zbuffer, float *depthbuffer,int &min,int &max)
+void triangle(Vec4f* pts, IShader& shader, TGAImage& image, float *zbuffer)
 {
 	Vec2f bboxmin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
 	Vec2f bboxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
@@ -95,18 +95,18 @@ void triangle(Vec4f* pts, IShader& shader, TGAImage& image,TGAImage& zbuffer, fl
 			//zbuffer.get(P.x, P.y)[0] 大于 frag_depth则意味着当前zbuffer离摄像机更近，因此跳出循环
 			//zbuffer[P.x+P.y*image.get_width()]>frag_depth
 			//zbuffer.get(P.x, P.y)[0]>frag_depth
-			if (c.x < 0 || c.y < 0 || c.z<0 || depthbuffer[int(P.x+P.y*image.get_width())]>frag_depth) continue;
+			if (c.x < 0 || c.y < 0 || c.z<0 || zbuffer[int(P.x+P.y*image.get_width())]>frag_depth) continue;
 			//获取颜色
 			bool discard = shader.fragment(c, color);
 			if (!discard)
 			{
 				//计算frag_depth范围，从而进行缩放
-				if (frag_depth > max) max = frag_depth;
-				if (frag_depth < min) min = frag_depth;
+				/*if (frag_depth > max) max = frag_depth;
+				if (frag_depth < min) min = frag_depth;*/
 				//min=431，max=1871，系数为255/(1871-431)=0.1777;
-				int zbuffer_value = std::max(0, std::min(255, int((frag_depth - 432) * 255/(1871-431))));
-				zbuffer.set(P.x, P.y, TGAColor(zbuffer_value));
-				depthbuffer[int(P.x + P.y * image.get_width())] = frag_depth;
+				/*int zbuffer_value = std::max(0, std::min(255, int((frag_depth - 432) * 255/(1871-431))));
+				zbuffer.set(P.x, P.y, TGAColor(zbuffer_value));*/
+				zbuffer[int(P.x + P.y * image.get_width())] = frag_depth;
 				image.set(P.x, P.y, color);
 			}
 		}

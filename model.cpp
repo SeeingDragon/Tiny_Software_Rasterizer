@@ -60,7 +60,7 @@ Model::Model(const char* filename) : verts_(), faces_() {
     }
     std::cerr << "# v# " << verts_.size() <<"vt# "<< uv_.size() <<"vn# "<< norms_.size() << " f# " << faces_.size() << std::endl;
     load_texture(filename, "_diffuse.tga", diffusemap_);
-    load_texture(filename, "_nm_tangent.tga", normalmap_);
+    load_texture(filename, "_nm.tga", normalmap_);
     load_texture(filename, "_spec.tga", specualrmap_);
     //进行垂直翻转，不然坐标是反的；
     diffusemap_.flip_vertically();
