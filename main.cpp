@@ -1,4 +1,4 @@
-#include <vector> 
+ï»¿#include <vector> 
 #include <iostream> 
 #include <vector>
 #include <cmath>
@@ -9,118 +9,123 @@
 
 
 Model* model = NULL;
+float* shadowbuffer = NULL;
 const int width = 800;
 const int height = 800;
 
-Vec3f light_dir(1, 1, 1);
-Vec3f eye(1, 1, 3);
+Vec3f light_dir(1, 1, 0);
+Vec3f eye(1, 1, 4);
 Vec3f center(0, 0, 0);
 Vec3f up(0, 1, 0);
 
 struct GouraudShader :public IShader
 {
-	//¶¥µã×ÅÉ«Æ÷Ğ´Èë£¬Æ¬¶Î×ÅÉ«Æ÷¶ÁÈ¡¡£
+	//é¡¶ç‚¹ç€è‰²å™¨å†™å…¥ï¼Œç‰‡æ®µç€è‰²å™¨è¯»å–ã€‚
 	Vec3f varying_intensity;
-	//±íÊ¾1£º//¶Ô¶¥µã×ø±êÌåÏµ½øĞĞ±ä»»£¬ÒÔ¼°»ñÈ¡µ½Èı¸ö¶¥µãµÄuvºÍ¹âÕÕÇ¿¶È£¨¹âÕÕÇ¿¶ÈµÈÓÚ·¨Ïß³ËÒÔ¹âÕÕÏòÁ¿£©
+	//è¡¨ç¤º1ï¼š//å¯¹é¡¶ç‚¹åæ ‡ä½“ç³»è¿›è¡Œå˜æ¢ï¼Œä»¥åŠè·å–åˆ°ä¸‰ä¸ªé¡¶ç‚¹çš„uvå’Œå…‰ç…§å¼ºåº¦ï¼ˆå…‰ç…§å¼ºåº¦ç­‰äºæ³•çº¿ä¹˜ä»¥å…‰ç…§å‘é‡ï¼‰
 
 	virtual Vec4f vertex(int iface, int nthvert)
 	{
-		//¸ù¾İ·¨ÏßÏòÁ¿¼ÆËã¹âÕÕÇ¿¶È
+		//æ ¹æ®æ³•çº¿å‘é‡è®¡ç®—å…‰ç…§å¼ºåº¦
 		varying_intensity[nthvert] = std::max(0.f, model->normal(iface, nthvert) * light_dir);
-		//¶Ô¶¥µãÒıÈëÆë´Î·½³Ì
+		//å¯¹é¡¶ç‚¹å¼•å…¥é½æ¬¡æ–¹ç¨‹
 		Vec4f gl_Vertex = embed<4>(model->vert(iface, nthvert));
-		//ÊÓÍ¼±ä»»
+		//è§†å›¾å˜æ¢
 		gl_Vertex = Viewport * Projection * ModelView * gl_Vertex;
 		return gl_Vertex;
 	}
 
-	//±íÊ¾1£º¸ù¾İ¶¥µã»ñÈ¡µ½µÄ¹âÕÕÇ¿¶ÈºÍuv½øĞĞ²åÖµ£¬È»ºóÍ¨¹ıuv×ø±ê»ñÈ¡Í¼Æ¬µÄÑÕÉ«£¬×îºó³ËÒÔ¹âÕÕÇ¿¶È¾ÍÊÇ×îºóµÄÑÕÉ«
+	//è¡¨ç¤º1ï¼šæ ¹æ®é¡¶ç‚¹è·å–åˆ°çš„å…‰ç…§å¼ºåº¦å’Œuvè¿›è¡Œæ’å€¼ï¼Œç„¶åé€šè¿‡uvåæ ‡è·å–å›¾ç‰‡çš„é¢œè‰²ï¼Œæœ€åä¹˜ä»¥å…‰ç…§å¼ºåº¦å°±æ˜¯æœ€åçš„é¢œè‰²
 
-	//Èç¹ûÎÒÃÇÓĞÒ»¸öÄ£ĞÍ£¬Æä·¨ÏòÁ¿ÓÉÒÕÊõ¼Ò¸ø³ö£¬²¢ÇÒ¸ÃÄ£ĞÍÓÃ·ÂÉäÓ³Éä½øĞĞ±ä»»£¬Ôò·¨ÏòÁ¿½«Ê¹ÓÃÓ³Éä½øĞĞ±ä»»£¬µÈÓÚÔ­Ê¼Ó³Éä¾ØÕóµÄ·´¾ØÕóµÄ×ªÖÃ
+	//å¦‚æœæˆ‘ä»¬æœ‰ä¸€ä¸ªæ¨¡å‹ï¼Œå…¶æ³•å‘é‡ç”±è‰ºæœ¯å®¶ç»™å‡ºï¼Œå¹¶ä¸”è¯¥æ¨¡å‹ç”¨ä»¿å°„æ˜ å°„è¿›è¡Œå˜æ¢ï¼Œåˆ™æ³•å‘é‡å°†ä½¿ç”¨æ˜ å°„è¿›è¡Œå˜æ¢ï¼Œç­‰äºåŸå§‹æ˜ å°„çŸ©é˜µçš„åçŸ©é˜µçš„è½¬ç½®
 	virtual bool fragment(Vec3f bar, TGAColor& color)
 	{
 		float intensity = varying_intensity * bar;
-		color =TGAColor(255 * intensity, 255 * intensity, 255 * intensity,255);
+		color = TGAColor(255 * intensity, 255 * intensity, 255 * intensity, 255);
 		return false;
 	}
 };
 
 struct TextureShader1 :public IShader
 {
-	//¶¥µã×ÅÉ«Æ÷Ğ´Èë£¬Æ¬¶Î×ÅÉ«Æ÷¶ÁÈ¡¡£
+	//é¡¶ç‚¹ç€è‰²å™¨å†™å…¥ï¼Œç‰‡æ®µç€è‰²å™¨è¯»å–ã€‚
 	Vec3f varying_intensity;
 	mat<2, 3, float> varying_uv;
-	//±íÊ¾1£º//¶Ô¶¥µã×ø±êÌåÏµ½øĞĞ±ä»»£¬ÒÔ¼°»ñÈ¡µ½Èı¸ö¶¥µãµÄuvºÍ¹âÕÕÇ¿¶È£¨¹âÕÕÇ¿¶ÈµÈÓÚ·¨Ïß³ËÒÔ¹âÕÕÏòÁ¿£©
+	//è¡¨ç¤º1ï¼š//å¯¹é¡¶ç‚¹åæ ‡ä½“ç³»è¿›è¡Œå˜æ¢ï¼Œä»¥åŠè·å–åˆ°ä¸‰ä¸ªé¡¶ç‚¹çš„uvå’Œå…‰ç…§å¼ºåº¦ï¼ˆå…‰ç…§å¼ºåº¦ç­‰äºæ³•çº¿ä¹˜ä»¥å…‰ç…§å‘é‡ï¼‰
 	virtual Vec4f vertex(int iface, int nthvert)
 	{
-		//±íÊ¾1£º
-		//¸ù¾İ·¨ÏßÏòÁ¿¼ÆËã¹âÕÕÇ¿¶È
+		//è¡¨ç¤º1ï¼š
+		//æ ¹æ®æ³•çº¿å‘é‡è®¡ç®—å…‰ç…§å¼ºåº¦
 		varying_intensity[nthvert] = std::max(0.f, model->normal(iface, nthvert) * light_dir);
-		//¼ÆËãuv,°´ÁĞÌîÈëÊı×Ö£¬Ã¿Ò»ÁĞ¶¼ÊÇÒ»¸ö¶¥µãµÄuv
+		//è®¡ç®—uv,æŒ‰åˆ—å¡«å…¥æ•°å­—ï¼Œæ¯ä¸€åˆ—éƒ½æ˜¯ä¸€ä¸ªé¡¶ç‚¹çš„uv
 		varying_uv.set_col(nthvert, model->uv(iface, nthvert));
-		//¶Ô¶¥µãÒıÈëÆë´Î·½³Ì
+		//å¯¹é¡¶ç‚¹å¼•å…¥é½æ¬¡æ–¹ç¨‹
 		Vec4f gl_Vertex = embed<4>(model->vert(iface, nthvert));
-		//ÊÓÍ¼±ä»»
+		//è§†å›¾å˜æ¢
 		gl_Vertex = Viewport * Projection * ModelView * gl_Vertex;
 		return gl_Vertex;
 	}
 
-	//±íÊ¾1£º¸ù¾İ¶¥µã»ñÈ¡µ½µÄ¹âÕÕÇ¿¶ÈºÍuv½øĞĞ²åÖµ£¬È»ºóÍ¨¹ıuv×ø±ê»ñÈ¡Í¼Æ¬µÄÑÕÉ«£¬×îºó³ËÒÔ¹âÕÕÇ¿¶È¾ÍÊÇ×îºóµÄÑÕÉ«
+	//è¡¨ç¤º1ï¼šæ ¹æ®é¡¶ç‚¹è·å–åˆ°çš„å…‰ç…§å¼ºåº¦å’Œuvè¿›è¡Œæ’å€¼ï¼Œç„¶åé€šè¿‡uvåæ ‡è·å–å›¾ç‰‡çš„é¢œè‰²ï¼Œæœ€åä¹˜ä»¥å…‰ç…§å¼ºåº¦å°±æ˜¯æœ€åçš„é¢œè‰²
 	virtual bool fragment(Vec3f bar, TGAColor& color)
 	{
-		//±íÊ¾1£º
+		//è¡¨ç¤º1ï¼š
 		float intensity = varying_intensity * bar;
 		Vec2f uv = varying_uv * bar;
-		//Ñ¡Ôñ¶ÁÈ¡ÄÄ¸öÎÆÀíÍ¼Æ¬
+		//é€‰æ‹©è¯»å–å“ªä¸ªçº¹ç†å›¾ç‰‡
 		color = model->diffuse(uv);
 		for (int i = 0; i < 3; i++) color[i] = color[i] * intensity;
 		return false;
 	}
 };
 
-//±íÊ¾2£º¹âÕÕÇ¿¶È²»ÔÙÊ¹ÓÃÈı¸ö¶¥µãµÄ¹âÕÕÇ¿¶ÈÖµ½øĞĞ²åÖµ
+//è¡¨ç¤º2ï¼šå…‰ç…§å¼ºåº¦ä¸å†ä½¿ç”¨ä¸‰ä¸ªé¡¶ç‚¹çš„å…‰ç…§å¼ºåº¦å€¼è¿›è¡Œæ’å€¼
 struct TextureShader2 :public IShader
 {
-	//¶¥µã×ÅÉ«Æ÷Ğ´Èë£¬Æ¬¶Î×ÅÉ«Æ÷¶ÁÈ¡¡£
-	Vec3f varying_intensity;
-	mat<2, 3, float> varying_uv;
+	//é¡¶ç‚¹ç€è‰²å™¨å†™å…¥ï¼Œç‰‡æ®µç€è‰²å™¨è¯»å–ã€‚
 	mat<4, 4, float> uniform_M;
 	mat<4, 4, float> uniform_MIT;
-	//±íÊ¾1£º//¶Ô¶¥µã×ø±êÌåÏµ½øĞĞ±ä»»£¬ÒÔ¼°»ñÈ¡µ½Èı¸ö¶¥µãµÄuvºÍ¹âÕÕÇ¿¶È£¨¹âÕÕÇ¿¶ÈµÈÓÚ·¨Ïß³ËÒÔ¹âÕÕÏòÁ¿£©
+	mat<2, 3, float> varying_uv;
+	mat<3, 3, float> varying_tri;
 
-	//±íÊ¾2£º¹âÕÕÇ¿¶È²»ÔÙÊ¹ÓÃÈı¸ö¶¥µãµÄ¹âÕÕÇ¿¶ÈÖµ½øĞĞ²åÖµ
+	TextureShader2(Matrix M, Matrix MIT) : uniform_M(M), uniform_MIT(MIT), varying_uv(), varying_tri() { }
+
+	//è¡¨ç¤º1ï¼š//å¯¹é¡¶ç‚¹åæ ‡ä½“ç³»è¿›è¡Œå˜æ¢ï¼Œä»¥åŠè·å–åˆ°ä¸‰ä¸ªé¡¶ç‚¹çš„uvå’Œå…‰ç…§å¼ºåº¦ï¼ˆå…‰ç…§å¼ºåº¦ç­‰äºæ³•çº¿ä¹˜ä»¥å…‰ç…§å‘é‡ï¼‰
+
+	//è¡¨ç¤º2ï¼šå…‰ç…§å¼ºåº¦ä¸å†ä½¿ç”¨ä¸‰ä¸ªé¡¶ç‚¹çš„å…‰ç…§å¼ºåº¦å€¼è¿›è¡Œæ’å€¼
 	virtual Vec4f vertex(int iface, int nthvert)
 	{
-		//¼ÆËãuv,°´ÁĞÌîÈëÊı×Ö£¬Ã¿Ò»ÁĞ¶¼ÊÇÒ»¸ö¶¥µãµÄuv
+		//è®¡ç®—uv,æŒ‰åˆ—å¡«å…¥æ•°å­—ï¼Œæ¯ä¸€åˆ—éƒ½æ˜¯ä¸€ä¸ªé¡¶ç‚¹çš„uv
 		varying_uv.set_col(nthvert, model->uv(iface, nthvert));
-		//¶Ô¶¥µãÒıÈëÆë´Î·½³Ì
+		//å¯¹é¡¶ç‚¹å¼•å…¥é½æ¬¡æ–¹ç¨‹
 		Vec4f gl_Vertex = embed<4>(model->vert(iface, nthvert));
-		//ÊÓÍ¼±ä»»
+		//è§†å›¾å˜æ¢
 		gl_Vertex = Viewport * Projection * ModelView * gl_Vertex;
+		varying_tri.set_col(nthvert, proj<3>(gl_Vertex / gl_Vertex[3]));
 		return gl_Vertex;
 	}
 
-	//Èç¹ûÎÒÃÇÓĞÒ»¸öÄ£ĞÍ£¬Æä·¨ÏòÁ¿ÓÉÒÕÊõ¼Ò¸ø³ö£¬²¢ÇÒ¸ÃÄ£ĞÍÓÃ·ÂÉäÓ³Éä½øĞĞ±ä»»£¬Ôò·¨ÏòÁ¿½«Ê¹ÓÃÓ³Éä½øĞĞ±ä»»£¬µÈÓÚÔ­Ê¼Ó³Éä¾ØÕóµÄ·´¾ØÕóµÄ×ªÖÃ
-	virtual bool fragment(Vec3f bar, TGAColor &color)
+	//å¦‚æœæˆ‘ä»¬æœ‰ä¸€ä¸ªæ¨¡å‹ï¼Œå…¶æ³•å‘é‡ç”±è‰ºæœ¯å®¶ç»™å‡ºï¼Œå¹¶ä¸”è¯¥æ¨¡å‹ç”¨ä»¿å°„æ˜ å°„è¿›è¡Œå˜æ¢ï¼Œåˆ™æ³•å‘é‡å°†ä½¿ç”¨æ˜ å°„è¿›è¡Œå˜æ¢ï¼Œç­‰äºåŸå§‹æ˜ å°„çŸ©é˜µçš„åçŸ©é˜µçš„è½¬ç½®
+	virtual bool fragment(Vec3f bar, TGAColor& color)
 	{
 		Vec2f uv = varying_uv * bar;
-		//·¨ÏòÁ¿µÄ±ä»»
-		Vec3f n=proj<3>(uniform_MIT*embed<4>(model->normal(uv))).normalize();
-		//¹âÕÕÏòÁ¿×ø±êÌåÏµ±ä»»
+		//æ³•å‘é‡çš„å˜æ¢
+		Vec3f n = proj<3>(uniform_MIT * embed<4>(model->normal(uv))).normalize();
+		//å…‰ç…§å‘é‡åæ ‡ä½“ç³»å˜æ¢
 		Vec3f L = proj<3>(uniform_M * embed<4>(light_dir)).normalize();
-		//Èç¹û n ºÍ l ±»¹éÒ»»¯£¬Ôò r = 2n<n£¬l> - l
+		//å¦‚æœ n å’Œ l è¢«å½’ä¸€åŒ–ï¼Œåˆ™ r = 2n<nï¼Œl> - l
 		Vec3f r = (n * (n * L * 2.f) - L).normalize();
 		float diffuse = std::max(0.f, n * L);
-		//powº¯Êı·µ»ØxµÄy´Î·½
+		//powå‡½æ•°è¿”å›xçš„yæ¬¡æ–¹
 		float specular = pow(std::max(r.z, 0.f), model->specular(uv));
-		//Ñ¡Ôñ¶ÁÈ¡ÄÄ¸öÎÆÀíÍ¼Æ¬
+		//é€‰æ‹©è¯»å–å“ªä¸ªçº¹ç†å›¾ç‰‡
 		color = model->diffuse(uv);
-		for (int i = 0; i < 3; i++) color[i] = std::min<float>(5 + color[i] * (diffuse + 0.6 * specular), 255);
+		for (int i = 0; i < 3; i++) color[i] = std::min<float>(5 + color[i] * ( diffuse + 0.6 * specular), 255);
 		return false;
 	}
 };
 
-//Phong×ÅÉ«
+//Phongç€è‰²
 struct PhongShader :public IShader {
 	mat<2, 3, float> varying_uv;
 	mat<3, 3, float> varying_nrm;
@@ -137,25 +142,27 @@ struct PhongShader :public IShader {
 	{
 		Vec3f bn = (varying_nrm * bar).normalize();
 		Vec2f uv = varying_uv * bar;
-		float diffuse =std::max(0.f, bn * proj<3>(Projection*ModelView * embed<4>(light_dir)).normalize());
-		color = model->diffuse(uv)*diffuse;
+		float diffuse = std::max(0.f, bn * proj<3>(Projection * ModelView * embed<4>(light_dir)).normalize());
+		color = model->diffuse(uv) * diffuse;
 		//for (int i = 0; i < 3; i++) color[i] = color[i] * diffuse;
 		return false;
 	}
 };
 
+
+
 struct Shader :public IShader
 {
-	//´æ´¢uv×ø±ê
+	//å­˜å‚¨uvåæ ‡
 	mat<2, 3, float> varying_uv;
-	//°Ñ¶¥µã°´ÁĞ´æÈë
+	//æŠŠé¡¶ç‚¹æŒ‰åˆ—å­˜å…¥
 	mat<4, 3, float> varying_tri;
-	//´æ´¢Ô­Ê¼·¨ÏòÁ¿
+	//å­˜å‚¨åŸå§‹æ³•å‘é‡
 	mat<3, 3, float> varying_nrm;
-	//´æ´¢È¥µôÆë´Î·½³ÌµÄ¶¥µãÊı¾İ
-	mat<3,3,float> ndc_tri;
-	
-	virtual Vec4f vertex(int iface,int nthvert)
+	//å­˜å‚¨å»æ‰é½æ¬¡æ–¹ç¨‹çš„é¡¶ç‚¹æ•°æ®
+	mat<3, 3, float> ndc_tri;
+
+	virtual Vec4f vertex(int iface, int nthvert)
 	{
 		varying_uv.set_col(nthvert, model->uv(iface, nthvert));
 		varying_nrm.set_col(nthvert, proj<3>((Projection * ModelView).invert_transpose() * embed<4>(model->normal(iface, nthvert))));
@@ -167,48 +174,49 @@ struct Shader :public IShader
 	}
 	virtual bool fragment(Vec3f bar, TGAColor& color)
 	{
-		//¶ÔÔ­·¨ÏòÁ¿²åÖµ
+		//å¯¹åŸæ³•å‘é‡æ’å€¼
 		Vec3f bn = (varying_nrm * bar).normalize();
-		//¶ÔÔ­uv²åÖµ
+		//å¯¹åŸuvæ’å€¼
 		Vec2f uv = varying_uv * bar;
 
 		mat<3, 3, float> A;
-		//µÚÒ»¸ö¶¥µã¼õµôµÚÁã¸ö¶¥µã£¬´æÈëAµÄµÚÁãĞĞ
-		//°´ĞĞ´æ´¢
+		//ç¬¬ä¸€ä¸ªé¡¶ç‚¹å‡æ‰ç¬¬é›¶ä¸ªé¡¶ç‚¹ï¼Œå­˜å…¥Açš„ç¬¬é›¶è¡Œ
+		//æŒ‰è¡Œå­˜å‚¨
 		A[0] = ndc_tri.col(1) - ndc_tri.col(0);
 		A[1] = ndc_tri.col(2) - ndc_tri.col(0);
 		A[2] = bn;
 
-		//ÇóÄæ¾ØÕó
+		//æ±‚é€†çŸ©é˜µ
 		mat<3, 3, float> AI = A.invert();
-		Vec3f i = AI * Vec3f(varying_uv[0][1] - varying_uv[0][0],varying_uv[0][2] - varying_uv[0][0],0.f);
-		Vec3f j = AI * Vec3f(varying_uv[1][1] - varying_uv[1][0], varying_uv[1][2] - varying_uv[1][0],0.f);
-		
-		//°´ÁĞ´æ´¢
+		Vec3f i = AI * Vec3f(varying_uv[0][1] - varying_uv[0][0], varying_uv[0][2] - varying_uv[0][0], 0.f);
+		Vec3f j = AI * Vec3f(varying_uv[1][1] - varying_uv[1][0], varying_uv[1][2] - varying_uv[1][0], 0.f);
+
+		//æŒ‰åˆ—å­˜å‚¨
 		mat<3, 3, float> B;
 		B.set_col(0, i.normalize());
 		B.set_col(1, j.normalize());
 		B.set_col(2, bn);
-		
-		//³ËÒÔ¾ØÕóB½øĞĞ×ø±ê»ù±ä»»
-		Vec3f n = (B * model->normal(uv)).normalize();
-		//²»ÄÜ°Ñ¹âÕÕ·ÅÔÚÕâÀïËã£¬ÒòÎªÕâÑùÃ¿¸öÏñËØ¶¼°Ñ¹âÕÕËãÒ»´Î£¬ÀÛ¼ÓĞ§¹û±ä»¯Ì«¿ì£¬Í¼Ïó²úÉú×ßÑùÏÖÏó
-		//light_dir = proj<3>((Projection * ModelView) * embed<4>(light_dir)).normalize();
-		Vec3f r = n * (n * light_dir) * 2.f - light_dir;
 
-		float diffuse = std::max(0.f, n*light_dir);
-		float specular = pow(std::max(r.z,0.f),model->specular(uv));
+		//ä¹˜ä»¥çŸ©é˜µBè¿›è¡Œåæ ‡åŸºå˜æ¢
+		Vec3f n = (B * model->normal(uv)).normalize();
+		//ä¸èƒ½æŠŠå…‰ç…§æ”¾åœ¨è¿™é‡Œç®—ï¼Œå› ä¸ºè¿™æ ·æ¯ä¸ªåƒç´ éƒ½æŠŠå…‰ç…§ç®—ä¸€æ¬¡ï¼Œç´¯åŠ æ•ˆæœå˜åŒ–å¤ªå¿«ï¼Œå›¾è±¡äº§ç”Ÿèµ°æ ·ç°è±¡
+		//light_dir = proj<3>((Projection * ModelView) * embed<4>(light_dir)).normalize();
+		Vec3f l = proj<3>((Projection * ModelView) * embed<4>(light_dir)).normalize();
+		Vec3f r = n * (n * l) * 2.f - l;
+		float diffuse = std::max(0.f, n * l);
+		float specular = pow(std::max(r.z, 0.f), model->specular(uv));
 		color = model->diffuse(uv);
-		for (int i = 0; i < 3; i++) color[i] = std::min<float>(5 + color[i] * (diffuse + 0.6 * specular), 255.f);
+		for (int i = 0; i < 3; i++) color[i] = std::min<float>(20 + color[i] * (1.2*diffuse + 0.6 * specular), 255.f);
 		return false;
 	}
 };
 
-struct DpethShader : public IShader
+
+struct DepthShader : public IShader
 {
 	mat<3, 3, float> varying_tri;
 
-	DpethShader() :varying_tri() {};
+	DepthShader() :varying_tri() {};
 
 	virtual Vec4f vertex(int iface, int nthvert)
 	{
@@ -226,6 +234,64 @@ struct DpethShader : public IShader
 	}
 };
 
+
+//è¡¨ç¤º2ï¼šå…‰ç…§å¼ºåº¦ä¸å†ä½¿ç”¨ä¸‰ä¸ªé¡¶ç‚¹çš„å…‰ç…§å¼ºåº¦å€¼è¿›è¡Œæ’å€¼
+struct ShadowShader :public IShader
+{
+	//é¡¶ç‚¹ç€è‰²å™¨å†™å…¥ï¼Œç‰‡æ®µç€è‰²å™¨è¯»å–ã€‚
+	mat<4, 4, float> uniform_M;
+	mat<4, 4, float> uniform_MIT;
+	mat<4, 4, float> uniform_Mshadow;
+	mat<2, 3, float> varying_uv;
+	mat<3, 3, float> varying_tri;
+
+	ShadowShader(Matrix M,Matrix MIT,Matrix MS) : uniform_M(M), uniform_MIT(MIT), uniform_Mshadow(MS), varying_uv(), varying_tri() { }
+
+	//è¡¨ç¤º1ï¼š//å¯¹é¡¶ç‚¹åæ ‡ä½“ç³»è¿›è¡Œå˜æ¢ï¼Œä»¥åŠè·å–åˆ°ä¸‰ä¸ªé¡¶ç‚¹çš„uvå’Œå…‰ç…§å¼ºåº¦ï¼ˆå…‰ç…§å¼ºåº¦ç­‰äºæ³•çº¿ä¹˜ä»¥å…‰ç…§å‘é‡ï¼‰
+
+	//è¡¨ç¤º2ï¼šå…‰ç…§å¼ºåº¦ä¸å†ä½¿ç”¨ä¸‰ä¸ªé¡¶ç‚¹çš„å…‰ç…§å¼ºåº¦å€¼è¿›è¡Œæ’å€¼
+	virtual Vec4f vertex(int iface, int nthvert)
+	{
+		//è®¡ç®—uv,æŒ‰åˆ—å¡«å…¥æ•°å­—ï¼Œæ¯ä¸€åˆ—éƒ½æ˜¯ä¸€ä¸ªé¡¶ç‚¹çš„uv
+		varying_uv.set_col(nthvert, model->uv(iface, nthvert));
+		//å¯¹é¡¶ç‚¹å¼•å…¥é½æ¬¡æ–¹ç¨‹
+		Vec4f gl_Vertex = embed<4>(model->vert(iface, nthvert));
+		//è§†å›¾å˜æ¢
+		gl_Vertex = Viewport * Projection * ModelView * gl_Vertex;
+		varying_tri.set_col(nthvert, proj<3>(gl_Vertex / gl_Vertex[3]));
+		return gl_Vertex;
+	}
+
+	//å¦‚æœæˆ‘ä»¬æœ‰ä¸€ä¸ªæ¨¡å‹ï¼Œå…¶æ³•å‘é‡ç”±è‰ºæœ¯å®¶ç»™å‡ºï¼Œå¹¶ä¸”è¯¥æ¨¡å‹ç”¨ä»¿å°„æ˜ å°„è¿›è¡Œå˜æ¢ï¼Œåˆ™æ³•å‘é‡å°†ä½¿ç”¨æ˜ å°„è¿›è¡Œå˜æ¢ï¼Œç­‰äºåŸå§‹æ˜ å°„çŸ©é˜µçš„åçŸ©é˜µçš„è½¬ç½®
+	virtual bool fragment(Vec3f bar, TGAColor& color)
+	{
+		//æ ¹æ®é‡å¿ƒåæ ‡åæ¨pç‚¹çš„åæ ‡å¹¶ä¸”ä¹˜ä»¥
+		Vec4f sb_p = uniform_Mshadow * embed<4>(varying_tri * bar);
+		sb_p = sb_p / sb_p[3];
+
+		int idx = int(sb_p[0]) + int(sb_p[1]) * width;
+		float shadow = .3 + .7 * (shadowbuffer[idx] < sb_p[2]);
+
+		Vec2f uv = varying_uv * bar;
+		//æ³•å‘é‡çš„å˜æ¢
+		Vec3f n = proj<3>(uniform_MIT * embed<4>(model->normal(uv))).normalize();
+		//å…‰ç…§å‘é‡åæ ‡ä½“ç³»å˜æ¢
+		Vec3f L = proj<3>(uniform_M * embed<4>(light_dir)).normalize();
+		//å¦‚æœ n å’Œ l è¢«å½’ä¸€åŒ–ï¼Œåˆ™ r = 2n<nï¼Œl> - l
+		Vec3f r = (n * (n * L * 2.f) - L).normalize();
+		float diffuse = std::max(0.f, n * L);
+		//powå‡½æ•°è¿”å›xçš„yæ¬¡æ–¹
+		float specular = pow(std::max(r.z, 0.f), model->specular(uv));
+		//é€‰æ‹©è¯»å–å“ªä¸ªçº¹ç†å›¾ç‰‡
+		color = model->diffuse(uv);
+		for (int i = 0; i < 3; i++) color[i] = std::min<float>(20 + color[i] *shadow*(1.2 * diffuse + 0.6 * specular), 255);
+		return false;
+	}
+};
+
+
+//argc æ˜¯ argument countçš„ç¼©å†™ï¼Œè¡¨â½°ä¼ â¼Šmainå‡½æ•°çš„å‚æ•°ä¸ªæ•°ï¼›
+//argv æ˜¯ argument vectorçš„ç¼©å†™ï¼Œè¡¨â½°ä¼ â¼Šmainå‡½æ•°çš„å‚æ•°åºåˆ—æˆ–æŒ‡é’ˆï¼Œå¹¶ä¸”ç¬¬â¼€ä¸ªå‚æ•°argv[0]â¼€å®šæ˜¯ç¨‹åºçš„åç§°ï¼Œå¹¶ä¸”åŒ…å«äº†ç¨‹åºæ‰€åœ¨çš„å®Œæ•´è·¯å¾„ï¼Œæ‰€ä»¥ç¡®åˆ‡çš„è¯´éœ€è¦æˆ‘ä»¬è¾“â¼Šçš„mainå‡½æ•°çš„å‚æ•°ä¸ªæ•°åº”è¯¥æ˜¯argc - 1ä¸ªï¼›
 int main(int argc, char** argv)
 {
 	if (2 == argc)
@@ -234,50 +300,71 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		model = new Model("F:\\GraphicsLearn\\Tiny_Software_Rasterizer\\obj\\african_head\\african_head.obj");
+		//diablo3_pose  //african_head
+		model = new Model("F:\\GraphicsLearn\\Tiny_Software_Rasterizer\\obj\\diablo3_pose\\diablo3_pose.obj");
 	}
-	lookat(eye, center, up);
-	//ÎªÊ²Ã´²ÉÓÃ3/4widthºÍheight
-	viewport(width / 8, height / 8, width*3/4 , height*3/4);
-	//normº¯Êıreturn std::sqrt(x * x + y * y + z * z)
-	projection(-1.f / (eye - center).norm());
-	TGAImage image(width, height, TGAImage::RGB);
+	float* zbuffer = new float[width * height];
+	shadowbuffer = new float[width * height];
+	for (int i = 0; i < width * height; i++) zbuffer[i]= shadowbuffer[i] = -std::numeric_limits<float>::max();
+	//TGAImage zbuffer(width, height, TGAImage::GRAYSCALE);
 
-	float* depthbuffer = new float[width * height];
-	for (int i = 0; i < width * height; i++) depthbuffer[i] = -std::numeric_limits<float>::max();
-	TGAImage zbuffer(width, height, TGAImage::GRAYSCALE);
+	light_dir.normalize();
+	//ç¬¬ä¸€æ¬¡æ¸²æŸ“ï¼Œå°†æ·±åº¦å€¼å­˜å‚¨åœ¨shadowbufferä¸Šã€‚
+	{
+		TGAImage depthbuffer(width, height, TGAImage::RGB);
+		lookat(light_dir, center, up);
+		//ä¸ºä»€ä¹ˆé‡‡ç”¨3/4widthå’Œheight
+		viewport(width / 8, height / 8, width * 3 / 4, height * 3 / 4);
+		//normå‡½æ•°return std::sqrt(x * x + y * y + z * z)
+		projection(0);
 
-	//gouraudÒõÓ°×ÅÉ«
-	//GouraudShader shader;
+		DepthShader depthshader;
 
-	//ÎÆÀí×ÅÉ«
-	//TextureShader1 shader;
-	/*TextureShader2 shader;
-	shader.uniform_M = Projection * ModelView;
-	shader.uniform_MIT=(Projection*ModelView).invert_transpose();*/
-
-	light_dir = proj<3>((Projection * ModelView) * embed<4>(light_dir)).normalize();
-	int min =2000;
-	int max =0;
-	Shader shader;
-	//model->nfaces()·µ»ØÈı½ÇĞÎµÄÊıÁ¿
-	for (int i = 0; i < model->nfaces(); i++) {
-		//±£´æÈı¸ö¶¥µã
 		Vec4f screen_coords[3];
-		for (int j = 0; j < 3; j++)
+		for (int i = 0; i < model->nfaces(); i++)
 		{
-			screen_coords[j] = shader.vertex(i, j);
+			for (int j = 0; j < 3; j++)
+			{
+				screen_coords[j]=depthshader.vertex(i, j);
+			}
+			triangle(screen_coords, depthshader, depthbuffer, shadowbuffer);
 		}
-		triangle(screen_coords, shader, image, zbuffer,depthbuffer,min,max);
-	
+		depthbuffer.flip_vertically();
+		depthbuffer.write_tga_file("depthbuffer.tga");
 	}
-	std::cout << "min= " << min << std::endl;
-	std::cout << "max= " << max <<std::endl;
-	image.flip_vertically();
-	zbuffer.flip_vertically();
-	image.write_tga_file("output.tga");
-	zbuffer.write_tga_file("zbuffer.tga");
+
+	Matrix M = Viewport * Projection * ModelView;
+
+	//ç¬¬äºŒæ¬¡æ¸²æŸ“
+	{
+		lookat(eye, center, up);
+		//ä¸ºä»€ä¹ˆé‡‡ç”¨3/4widthå’Œheight
+		viewport(width / 8, height / 8, width * 3 / 4, height * 3 / 4);
+		//normå‡½æ•°return std::sqrt(x * x + y * y + z * z)
+		projection(-1.f / (eye - center).norm());
+		TGAImage image(width, height, TGAImage::RGB);
+
+		ShadowShader shader(Projection*ModelView, (Projection * ModelView).invert_transpose(), M * (Viewport * Projection * ModelView).invert());
+		//model->nfaces()è¿”å›ä¸‰è§’å½¢çš„æ•°é‡
+		for (int i = 0; i < model->nfaces(); i++) {
+			//ä¿å­˜ä¸‰ä¸ªé¡¶ç‚¹
+			Vec4f screen_coords[3];
+			for (int j = 0; j < 3; j++)
+			{
+				screen_coords[j] = shader.vertex(i, j);
+			}
+			triangle(screen_coords, shader, image, zbuffer);
+
+		}
+		image.flip_vertically();
+		image.write_tga_file("output.tga");
+	}
+	
 
 	delete model;
+	delete[] zbuffer;
+	delete[] shadowbuffer;
 	return 0;
 }
+
+
