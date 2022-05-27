@@ -22,6 +22,8 @@ private:
 	TGAImage normalmap_;
 	//高光贴图
 	TGAImage specualrmap_;
+	//环境光贴图
+	TGAImage occlusionmap_;
 	void load_texture(std::string filename, const char* suffix, TGAImage& img);
 public:
 	Model(const char* filename);
@@ -33,6 +35,7 @@ public:
 	Vec2f uv(int iface, int nthvert);
 	Vec3f normal(int iface, int nthvert);
 	TGAColor diffuse(Vec2f uvf);
+	TGAColor occlusion(Vec2f uvf);
 	Vec3f normal(Vec2f uvf);
 	float specular(Vec2f uvf);
 	std::vector<int> face(int idx);
