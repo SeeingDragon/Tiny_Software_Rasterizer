@@ -62,10 +62,12 @@ Model::Model(const char* filename) : verts_(), faces_() {
     load_texture(filename, "_diffuse.tga", diffusemap_);
     load_texture(filename, "_nm.tga", normalmap_);
     load_texture(filename, "_spec.tga", specualrmap_);
+    load_texture(filename, "_occlusion.tga", occlusionmap_);
     //进行垂直翻转，不然坐标是反的；
     diffusemap_.flip_vertically();
     normalmap_.flip_vertically();
     specualrmap_.flip_vertically();
+    occlusionmap_.flip_vertically();
 }
 
 Model::~Model() {
@@ -128,6 +130,14 @@ TGAColor Model::diffuse(Vec2f uvf)
     Vec2i uv(int(uvf[0] * diffusemap_.get_width()), int(uvf[1] * diffusemap_.get_height()));
     return diffusemap_.get(uv.x, uv.y);
 }
+
+TGAColor Model::occlusion(Vec2f uvf)
+{
+    Vec2i uv(int(uvf[0] * occlusionmap_.get_width()), int(uvf[1] * occlusionmap_.get_height()));
+    return occlusionmap_.get(uv.x, uv.y);
+}
+
+
 
 Vec3f Model::normal(Vec2f uvf)
 {

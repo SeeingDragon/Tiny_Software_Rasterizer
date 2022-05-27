@@ -17,7 +17,7 @@ struct IShader
 {
 	virtual ~IShader();
 	virtual Vec4f vertex(int iface, int nthvert) =0;
-	virtual bool fragment(Vec3f bar, TGAColor& color) = 0;
+	virtual bool fragment(Vec3f gl_fragcoords,Vec3f bar, TGAColor& color) = 0;
 };
 
 void triangle(Vec4f* pts, IShader& shader, TGAImage& image,float* depthbuffer);

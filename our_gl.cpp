@@ -97,7 +97,9 @@ void triangle(Vec4f* pts, IShader& shader, TGAImage& image, float *zbuffer)
 			//zbuffer.get(P.x, P.y)[0]>frag_depth
 			if (c.x < 0 || c.y < 0 || c.z<0 || zbuffer[int(P.x+P.y*image.get_width())]>frag_depth) continue;
 			//获取颜色
-			bool discard = shader.fragment(c, color);
+			//bool discard = shader.fragment(c, color);
+			Vec3f gl_fragcoord(P.x, P.y, frag_depth);
+			bool discard = shader.fragment(gl_fragcoord, c, color);
 			if (!discard)
 			{
 				//计算frag_depth范围，从而进行缩放
@@ -108,6 +110,7 @@ void triangle(Vec4f* pts, IShader& shader, TGAImage& image, float *zbuffer)
 				zbuffer.set(P.x, P.y, TGAColor(zbuffer_value));*/
 				zbuffer[int(P.x + P.y * image.get_width())] = frag_depth;
 				image.set(P.x, P.y, color);
+				
 			}
 		}
 	}
